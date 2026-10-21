@@ -61,6 +61,8 @@ deal-intelligence-pipeline/
 │   └── approved/
 ├── examples/
 │   └── example-approved-deal.md
+├── routines/
+│   └── gspace-post.md
 └── tests/
     ├── acceptance-criteria.md
     └── test-cases.md
@@ -83,3 +85,7 @@ deal-intelligence-pipeline/
 `Phase 0 Deal Intake -> Phase 1 Source Collection -> Phase 2 Deal Context Analysis -> Phase 3 Nick's 3 Questions -> Phase 4 Signal Extraction -> Phase 5 Verification / Critic -> Phase 6 Git Storage -> Phase 7 Current-Deal Matching -> Phase 8 5-Minute Read Input`
 
 Every phase ends in a mandatory human review gate.
+
+## Routines
+
+- `routines/gspace-post.md`: a self-contained, draft-only Claude routine. It looks 7 days ahead in the Notion Meeting Diary, skips meetings with no linked DealStrategy, reads previous calls and Drive transcripts, and drafts a 5-Minute Read (deal, call and date in the header) for human approval before it is posted to a Google Chat space. It reads nothing else from this repo and does not need the Hyly Wiki repo. Posting is not enabled until a Chat webhook and an approval step are in place.
