@@ -62,7 +62,8 @@ deal-intelligence-pipeline/
 ├── examples/
 │   └── example-approved-deal.md
 ├── routines/
-│   └── gspace-post.md
+│   ├── gspace-post.md
+│   └── card_payload.py
 └── tests/
     ├── acceptance-criteria.md
     └── test-cases.md
@@ -88,4 +89,4 @@ Every phase ends in a mandatory human review gate.
 
 ## Routines
 
-- `routines/gspace-post.md`: a self-contained, draft-only Claude routine. It looks 7 days ahead in the Notion Meeting Diary, skips meetings with no linked DealStrategy, reads previous calls and Drive transcripts, and drafts a 5-Minute Read (deal, call and date in the header) for human approval before it is posted to a Google Chat space. It reads nothing else from this repo and does not need the Hyly Wiki repo. Posting is not enabled until a Chat webhook and an approval step are in place.
+- `routines/gspace-post.md`: a self-contained, draft-only Claude routine for the Kairoi and AION deals. It looks 7 days ahead in the Notion Meeting Diary, skips meetings with no linked DealStrategy, reads previous calls and Drive transcripts, and returns a structured 5-Minute Pre-Call View (deal, call and date in the header). `routines/card_payload.py` turns that output into a Google Chat card. It reads nothing else from this repo and does not need the Hyly Wiki repo. A person reviews the output and posts the card; the routine never posts.
