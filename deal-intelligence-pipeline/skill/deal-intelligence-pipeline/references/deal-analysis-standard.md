@@ -2,6 +2,10 @@
 
 Apply the same standard to every deal. The answers may differ, but the analysis structure should remain consistent.
 
+## Evidence Coverage Before Analysis
+
+Apply `source-hierarchy.md` to every deal. Establish facts from approved retrieved content, including relevant linked records and meeting bodies. For each material unresolved field, retain its coverage status and evidence references: Not Retrieved, Inaccessible, Conflicting, or Not Found After Review with reviewed sources and search scope. Do not fill template blanks with claims about missing deal context. Unread content is retrieval work; complete available research before asking the human for discoverable facts.
+
 ## 1. Deal Context
 
 Capture only explicit facts:

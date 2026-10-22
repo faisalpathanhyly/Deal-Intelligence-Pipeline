@@ -17,6 +17,33 @@ Build one repeatable pipeline that can:
 
 The prototype is designed for Claude Skill / Claude Project testing. A Dark Factory is a later operationalization option after the workflow, rules, schemas, and review gates are stable.
 
+## Repository Authority and Execution Contract
+
+The checked-out repository is canonical for Phases 0-8, approval rules, source types, signal categories, verification logic, schemas, and storage paths. Read the applicable repository files before execution; do not replace missing rules with memory, external templates, or invented workflow. If references are unavailable, use only the explicitly authorized fallback procedure below; if authoritative rules conflict, report both and stop the affected decision. Human approval of a source does not authorize changing the workflow, taxonomy, or storage rules.
+
+Phase 0 requests only Deal Name, Product, Current Stage, and Record Type. Phase 1 follows Find -> Open -> Read -> Follow linked records -> Extract evidence -> Confirm coverage. Discovery labels are not reviewed evidence. Use the allowlist in `source-config.md`; HubSpot requires explicit human source approval. Every phase ends with the exact command `APPROVE PHASE N` for that completed phase; informal assent never advances execution. Phase 5 alone can verify candidate signals, and Phase 6 approval controls approved storage. Generated deal records use only verified `deal-records/drafts/` and `deal-records/approved/` paths.
+
+## Rule Loading, Fallback, and Precedence
+
+Before executing any phase, verify actual repository paths and load workflow.md, core-rules.md, source-config.md, human-review-gates.md, output-schemas.md, and the phase-specific references. Present the Repo Control Check defined in output-schemas.md as a separate pre-execution control message, not a new phase or a field in Phase 0's five-field output. Mark Yes only for rules actually loaded, not assumed from memory.
+
+If the canonical checkout or GitHub repository cannot be accessed, state that canonical rules could not be verified and ask whether to use available packaged/local fallback rules. Do not execute affected work until the human explicitly authorizes fallback and the identified fallback files are actually loaded. Lack of GitHub access alone is not a blocker when the verified canonical local checkout is available. Record fallback provenance, scope, available/missing files, and human authorization separately from phase approval. Never silently improvise missing rules; if fallback does not define a required behavior, stop that decision for resolution. Recheck before each phase; explicit fallback authorization applies only within its recorded scope.
+
+Apply this precedence model:
+1. Explicit human correction or decision for the active workflow.
+2. Repository SKILL.md.
+3. Phase-specific reference file.
+4. core-rules.md.
+5. human-review-gates.md.
+6. output-schemas.md.
+7. Acceptance criteria and tests.
+8. README.md.
+9. Examples/templates.
+
+Human corrections apply to the current deal unless the human explicitly changes the global methodology. Precedence identifies governing scope; it does not permit silent resolution of conflicting authoritative repository rules. Name both files and rules, surface the conflict, stop the affected decision, and request human resolution. Record the decision and scope; fallback permission or source permission alone does not waive approval gates or revise methodology.
+
+README.md, SKILL.md, references/, tests/, examples/, schemas, and templates define methodology or structure only. They are not factual evidence for any client/deal. README provides orientation; operating rules take precedence. Examples are not approved historical records or signals unless explicitly designated as approved deal records with the required approval provenance. Verify actual source paths and approval state before matching or storing; do not use an example's facts to fill this deal's gaps.
+
 ## Core Principle
 
 **Accuracy over completion.** It is acceptable to return `Unknown`, `Needs Evidence`, `No Valid Match`, or a `Pending Question`. It is not acceptable to invent information in order to complete a phase.
@@ -61,9 +88,6 @@ deal-intelligence-pipeline/
 │   └── approved/
 ├── examples/
 │   └── example-approved-deal.md
-├── routines/
-│   ├── gspace-post.md
-│   └── card_payload.py
 └── tests/
     ├── acceptance-criteria.md
     └── test-cases.md
@@ -76,7 +100,7 @@ deal-intelligence-pipeline/
 - **Notion DealStrategy**: strategic baseline for a deal.
 - **Linked Deal**: commercial / historical context when available.
 - **Notion Meeting Diary**: chronological meeting evidence.
-- **Transcripts / Google Drive**: deeper evidence when summaries are insufficient.
+- **Transcripts / Google Drive**: review all in-scope allowlisted evidence; summaries do not substitute for original content.
 - **Existing Hyly Wiki Git context**: account and deal context already stored in the Wiki.
 - **Human reviewer**: approves sources, facts, Nick's answers, candidate signals, verification, storage, and current-deal matches.
 - **5-Minute Read V2**: consumes only approved current-deal information and approved relevant closed-deal patterns.
