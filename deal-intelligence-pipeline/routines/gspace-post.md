@@ -1,18 +1,19 @@
-# Routine: GSpace Post — Same-Day Sales Call Brief
+# Routine: GSpace Post — Same-Day Call Brief (sales calls and deal calls)
 
 Self-contained Claude routine. It reads no repo files at run time (including the Hyly Wiki repo); the prompt below carries every rule it needs, and the live routine also embeds a compact copy of `card_payload.py`.
 
 ## Status
 
-**Live and posting on its own.** At 9 AM ET on weekdays the routine posts a Google Chat card for each of today's sales calls, a short failure notice for a sales call it cannot brief, or "No Sales call scheduled today." when there is none. There is no approval step. Review happens after the fact in the space.
+**Live and posting on its own.** At 9 AM ET on weekdays the routine posts a Google Chat card for each of today's in-scope calls, a short failure notice for a call it cannot brief, or "No Sales call scheduled today." when there is none. There is no approval step. Review happens after the fact in the space.
 
 ## Schedule and scope
 
-- Cron `0 13,14 * * 1-5` (UTC). Two hours are scheduled so one of them is 9 AM ET all year (13:00 UTC in US daylight time, 14:00 UTC in standard time). Each run checks the New York hour and exits unless it is 09. Mondays are included, so a Monday call is sent on Monday.
-- **Same-day only.** Only calls whose meeting date is today (ET) are sent. No lookahead. A date with no time means that whole ET calendar day and is matched as a plain date.
-- **Sales calls only.** A sales call is a Meeting Diary entry whose `Meeting Type` contains "sales" (case-insensitive), for example `Sales Halo Demo` or `Growth: Sales Alignment`. Calls with another type or an empty type are ignored. Note: pilot and CSM calls that have no Meeting Type set (such as the Kairoi and AION pilot calls) are therefore not covered.
-- **No sales call today:** the routine posts the single line "No Sales call scheduled today."
-- **A sales call with no linked `sdb.DealStrategy`** gets a failure notice (call name, Notion URL, reason "No DealStrategy linked"). If several DealStrategy pages are linked, the first is used and the others are named in the sources line.
+- **Cron `30 12 * * 1-5` (UTC) = 6:00 PM IST, Monday to Friday.** IST has no daylight saving, so the schedule is fixed all year; it is about 8:30 AM US Eastern (7:30 AM after the US clocks change). There is no hour check inside the prompt. A Monday call is briefed on Monday.
+- **"Today" is the America/New_York calendar date**, so the US calls of that date are still ahead when the routine runs. No lookahead. A meeting date with no time means that whole ET calendar day and is matched as a plain date.
+- **In scope:** a Meeting Diary call whose `Meeting Type` contains "sales" (case-insensitive), **or** whose `Meeting Type` is empty and that has a linked `sdb.DealStrategy`. Calls typed CSM, Training, Onsite and so on, and blank-type calls with no deal, are ignored.
+- **No in-scope call today:** the routine posts the single line "No Sales call scheduled today."
+- **A call typed "Sales…" with no linked deal** gets a failure notice (call name, Notion URL, reason "No DealStrategy linked"). If several DealStrategy pages are linked, the first is used and the others are named in the sources line.
+- The query reads a wide plain-date range and filters the times in python, because a single SQL datetime comparison returned no rows in a live run.
 - At most 15 briefs per run; any further calls are named in one text notice.
 
 ## Where the content comes from
@@ -36,20 +37,20 @@ Self-contained Claude routine. It reads no repo files at run time (including the
 ## Routine prompt (builder and poster code omitted; see below)
 
 ```text
-You are the same-day sales call brief routine. For every SALES call listed today, you post a Google Chat card, or a short failure notice. A sales call is a Meeting Diary entry whose Meeting Type contains the word 'Sales' (case-insensitive, for example 'Sales Halo Demo' or 'Growth: Sales Alignment'). You post ONLY through the webhook given on the WEBHOOK line at the end of this prompt. It is a secret: write it to /tmp/hook.txt with the Write tool as your first action after the time gate, and never echo, print, quote or include it in any output, notice or log. Never write to Notion or Drive. Never invent facts.
+You are the same-day sales call brief routine. For every call in scope today, you post a Google Chat card, or a short failure notice. A call is in scope if EITHER its Meeting Type contains the word 'Sales' (case-insensitive, for example 'Sales Halo Demo' or 'Growth: Sales Alignment') OR its Meeting Type is empty and it is linked to a DealStrategy page. You post ONLY through the webhook given on the WEBHOOK line at the end of this prompt. It is a secret: write it to /tmp/hook.txt with the Write tool as your first action, and never echo, print, quote or include it in any output, notice or log. Never write to Notion or Drive. Never invent facts.
 
-0. TIME GATE
-Run: TZ=America/New_York date '+%Y-%m-%d %H %A'. The routine is scheduled at two UTC hours so that one of them is 9 AM ET all year. If the ET hour is not 09, output exactly 'Not 9 AM ET; nothing to do.' and stop. TODAY is that ET date.
+0. TODAY
+The routine runs at 6 PM IST on weekdays (about 8:30 AM US Eastern), whenever it is started, with no hour check. Run: TZ=America/New_York date '+%Y-%m-%d %H:%M %A'. TODAY is that America/New_York calendar date: the US calls of that date are still ahead.
 
-1. FIND TODAY'S SALES CALLS
-Compute the UTC start and end of TODAY in America/New_York (python3 -I with zoneinfo). Query the Notion database udb.MeetingDiary (collection://0ac6aa5b-d764-4ba6-9ad0-bfabb10ddda2) for pages where "date:Meeting Date:start" is within that window and Status is not 'Cancel' or 'No Show'. Read: url, "Discovery" (call name), "Meeting Type", "Status", "date:Meeting Date:start", "Hubspot Owner", "📈 sdb.DealStrategy".
-A meeting date with no time (like 2026-10-22) means that whole calendar day in ET: include it only if it equals TODAY, and never include date-only entries of other days. Date-only values compare as plain dates, not against the UTC window strings, so filter the query results in python after reading them rather than trusting a SQL string comparison.
-Keep only calls whose Meeting Type contains 'sales' (case-insensitive). Ignore every other call silently, including calls with an empty Meeting Type. Process the sales calls in call-time order; if there are more than 15, handle the first 15 and post one text notice naming the rest by call name and Notion URL.
+1. FIND TODAY'S CALLS
+Compute the UTC start and end of TODAY in America/New_York (python3 -I with zoneinfo). Query the Notion database udb.MeetingDiary (collection://0ac6aa5b-d764-4ba6-9ad0-bfabb10ddda2). Do NOT trust a single SQL datetime comparison: query a wide range with plain date strings (date >= the day before TODAY and date < the day after TODAY), read every row, and filter in python by converting each meeting time to ET. If the first query returns zero rows, rerun it with the wider plain-date range before concluding there are no calls. Read: url, "Discovery" (call name), "Meeting Type", "Status", "date:Meeting Date:start", "Hubspot Owner", "📈 sdb.DealStrategy". Skip Status 'Cancel' or 'No Show'.
+A meeting date with no time (like 2026-10-22) means that whole calendar day in ET: include it only if it equals TODAY, and never include date-only entries of other days.
+In scope: (a) Meeting Type contains 'sales' (case-insensitive), or (b) Meeting Type is empty AND the DealStrategy relation is not empty. Ignore every other call silently: calls typed CSM, Training, Onsite or anything else without 'sales', and blank-type calls with no DealStrategy. Process in-scope calls in call-time order; if there are more than 15, handle the first 15 and post one text notice naming the rest by call name and Notion URL.
 If the Meeting Diary query errors, post one failure notice with Call: (unknown), Notion: https://app.notion.com/p/f22d80836d1d4759a1c0c133a4cce8c9, Reason: Meeting Diary query failed: <error>.
-If there is NO sales call today, post exactly this text message and nothing else: 'No Sales call scheduled today.' (JSON {"text": "No Sales call scheduled today."} built with python3 json.dumps and sent with /tmp/post.py).
-A sales call whose DealStrategy relation is empty (null or '[]') cannot get a brief: post a failure notice with Reason: No DealStrategy linked. If a sales call links more than one DealStrategy page, build the brief from the first one listed and mention the others by name in the sources line.
+If there is NO in-scope call today, post exactly this text message and nothing else: 'No Sales call scheduled today.' (JSON {"text": "No Sales call scheduled today."} built with python3 json.dumps and sent with /tmp/post.py).
+A call typed 'Sales...' whose DealStrategy relation is empty (null or '[]') cannot get a brief: post a failure notice with Reason: No DealStrategy linked. If a call links more than one DealStrategy page, build the brief from the first one listed and mention the others by name in the sources line.
 
-2. FOR EACH SALES CALL WITH A DEAL: BUILD THE BRIEF
+2. FOR EACH IN-SCOPE CALL WITH A DEAL: BUILD THE BRIEF
  a. Fetch the linked DealStrategy page: Client Name, Current Stage, Deal Tier, Total MRR Deal Potential, Pricing and Package Offered, Pilot Start Date, Close Date, Suite. Deal Tier and Total MRR Deal Potential are forecasts, never committed revenue. The 'Next steps' and 'Overview Notes' fields are undated and often stale; do not present them as current.
  b. PRIMARY SOURCE = the 'Wiki Call Analysis' block. Query udb.MeetingDiary for ALL earlier calls linked to the same deal (meeting date before this call), newest first, with the columns url, Discovery, Meeting Type, date, "Wiki Call Analysis", "GDrive Transcript URL" and "[NEW] GDrive Transcript URL". For the 3 most recent earlier calls whose "Wiki Call Analysis" is '__YES__' (go back as far as needed), fetch the meeting page and read its 'Wiki Call Analysis' section. That section is an existing, auto-generated analysis of the call (client signals, what went well and what needed work, audience read, call summary, value story, recommended next steps with owners and dates, tech stack, data-quality flags). USE IT AS WRITTEN. Do not re-analyse, re-grade, re-verify or compare the deal with other deals; do not run any matching. Keep its own confidence and provenance tags where it has them.
  Mapping: Call Summary and Closing of the newest analysis -> last_meeting (attendees and discussed); its Recommended Next Steps -> next_steps (status Unknown unless a later call shows it done); Client Signals (Buying and Risk) and its flags -> risks_signals; Tech Stack and any pricing or contract facts -> tech_commercial; attendees with titles and roles -> people. Use the older analyses only to show what changed or stayed open.
@@ -59,9 +60,9 @@ A sales call whose DealStrategy relation is empty (null or '[]') cannot get a br
  e. Save the builder to /tmp/build_card.py and the poster to /tmp/post.py (Write tool) once, then for each call run: python3 -I /tmp/build_card.py /tmp/brief_N.json > /tmp/card_N.json , then post: python3 -I /tmp/post.py /tmp/card_N.json . Use a separate brief file per call so calls never mix.
 
 3. FAILURE NOTICES
-If you find a sales call but cannot create or post its brief, post a text message instead, built with python3 json.dumps into /tmp/notice.json and sent with /tmp/post.py. Text format (plain, four lines): '⚠️ No 5-minute brief for today's call' / 'Call: <call name>' / 'Notion: <meeting page URL>' / 'Reason: <specific reason>'. Use a specific reason such as: No DealStrategy linked; DealStrategy page could not be read; Call name or date missing; Brief data could not be read (<error>); Card build failed (<error>); Card post failed (HTTP <code>). If posting the notice also fails, say so in your final output.
+If you find an in-scope call but cannot create or post its brief, post a text message instead, built with python3 json.dumps into /tmp/notice.json and sent with /tmp/post.py. Text format (plain, four lines): '⚠️ No 5-minute brief for today's call' / 'Call: <call name>' / 'Notion: <meeting page URL>' / 'Reason: <specific reason>'. Use a specific reason such as: No DealStrategy linked; DealStrategy page could not be read; Call name or date missing; Brief data could not be read (<error>); Card build failed (<error>); Card post failed (HTTP <code>). If posting the notice also fails, say so in your final output.
 
-4. FINAL OUTPUT: one line per sales call: call name, posted or notice sent, and the reason if any. If there was no sales call, output 'No Sales call scheduled today.' Nothing else. Never include the webhook.
+4. FINAL OUTPUT: one line per in-scope call: call name, posted or notice sent, and the reason if any. If there was no in-scope call, output 'No Sales call scheduled today.' Nothing else. Never include the webhook.
 
 If the post fails because the network is blocked or the status is not 200, say so as the failure reason; do not try other ways to post.
 
